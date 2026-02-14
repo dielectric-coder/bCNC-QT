@@ -1,0 +1,13 @@
+*.pyc
+*.pyo
+__pycache__/
+lib/*.pyc
+lib/*.pyo
+.idea
+bCNC.egg-info
+.eggs
+dist
+build
+
+*.code-workspace
+.vscode/
