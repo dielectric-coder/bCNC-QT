@@ -137,19 +137,20 @@ jobs:
           DESKTOP
           sed -i 's/^          //' AppDir/bCNC-QT.desktop
 
-          # Generate a 256x256 PNG icon from the bundled GIF, or create a placeholder
+          # Generate a 1x1 valid PNG placeholder (no dependencies needed)
           python3 -c "
-          from PIL import Image
-          import os, sys
-          gif = 'bCNC-QT/icons/about.gif'
-          out = 'AppDir/bCNC-QT.png'
-          if os.path.isfile(gif):
-              img = Image.open(gif).convert('RGBA').resize((256, 256), Image.LANCZOS)
-              img.save(out)
-          else:
-              img = Image.new('RGBA', (256, 256), (50, 100, 200, 255))
-              img.save(out)
-          print('Icon created:', out)
+          import struct, zlib
+          def png(path):
+              raw = b'\x00' + b'\x32\x64\xc8\xff'  # one RGBA pixel
+              comp = zlib.compress(raw)
+              def chunk(t, d): return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
+              with open(path, 'wb') as f:
+                  f.write(b'\x89PNG\r\n\x1a\n')
+                  f.write(chunk(b'IHDR', struct.pack('>IIBBBBB', 1, 1, 8, 6, 0, 0, 0)))
+                  f.write(chunk(b'IDAT', comp))
+                  f.write(chunk(b'IEND', b''))
+          png('AppDir/bCNC-QT.png')
+          print('Icon created')
           "
           cp AppDir/bCNC-QT.png AppDir/usr/share/icons/hicolor/256x256/apps/
 
