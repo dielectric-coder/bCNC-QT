@@ -1,4 +1,6 @@
-# bCNC-QT — Project Instructions for Claude
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -8,6 +10,18 @@ has been removed.
 
 - **Entry point:** `bCNC/qt/app.py` — `MainWindow` owns `Sender` (composition)
 - **Launch:** `python -m bCNC` or `python -m bCNC.qt.app`
+- **Config file:** `~/.bCNC` (INI format, shared with Tkinter version)
+
+## Development Setup
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Linux/macOS (.venv\Scripts\activate on Windows)
+pip install -e .                 # installs deps from setup.py (pyserial, numpy, Pillow, etc.)
+pip install PySide6              # Qt toolkit (not in setup.py — setup.py has tkinter deps)
+```
+
+All commands run from the repository root.
 
 ## Critical Import Order
 
