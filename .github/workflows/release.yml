@@ -72,10 +72,6 @@ jobs:
             artifact: bCNC-QT-linux-x86_64
           - os: windows-latest
             artifact: bCNC-QT-windows-x86_64
-          - os: macos-13
-            artifact: bCNC-QT-macos-x86_64
-          - os: macos-latest
-            artifact: bCNC-QT-macos-arm64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -194,8 +190,6 @@ jobs:
             artifacts/pip-packages/* \
             artifacts/bCNC-QT-linux-x86_64/*.tar.gz \
             artifacts/bCNC-QT-windows-x86_64/*.zip \
-            artifacts/bCNC-QT-macos-x86_64/*.tar.gz \
-            artifacts/bCNC-QT-macos-arm64/*.tar.gz \
             artifacts/bCNC-QT-AppImage/*.AppImage
 
   # ── Publish to PyPI (trusted publishing) ─────────────────────────────
