@@ -125,8 +125,8 @@ jobs:
           mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps
           cp -r bCNC-QT/* AppDir/usr/bin/
 
-          # Desktop entry
-          cat > AppDir/bCNC-QT.desktop << 'DESKTOP'
+          # Desktop entry (no leading whitespace allowed)
+          cat > AppDir/bCNC-QT.desktop <<'DESKTOP'
           [Desktop Entry]
           Type=Application
           Name=bCNC-QT
@@ -135,20 +135,32 @@ jobs:
           Categories=Science;Engineering;
           Comment=CNC controller GUI
           DESKTOP
+          sed -i 's/^          //' AppDir/bCNC-QT.desktop
 
-          # Use an existing icon or create a placeholder
-          if [ -f bCNC-QT/icons/about.gif ]; then
-            cp bCNC-QT/icons/about.gif AppDir/bCNC-QT.png 2>/dev/null || true
-          fi
-          cp AppDir/bCNC-QT.desktop AppDir/usr/share/icons/hicolor/256x256/apps/ 2>/dev/null || true
+          # Generate a 256x256 PNG icon from the bundled GIF, or create a placeholder
+          python3 -c "
+          from PIL import Image
+          import os, sys
+          gif = 'bCNC-QT/icons/about.gif'
+          out = 'AppDir/bCNC-QT.png'
+          if os.path.isfile(gif):
+              img = Image.open(gif).convert('RGBA').resize((256, 256), Image.LANCZOS)
+              img.save(out)
+          else:
+              img = Image.new('RGBA', (256, 256), (50, 100, 200, 255))
+              img.save(out)
+          print('Icon created:', out)
+          "
+          cp AppDir/bCNC-QT.png AppDir/usr/share/icons/hicolor/256x256/apps/
 
           # AppRun script
-          cat > AppDir/AppRun << 'APPRUN'
+          cat > AppDir/AppRun <<'APPRUN'
           #!/bin/bash
           SELF=$(readlink -f "$0")
           HERE=${SELF%/*}
           exec "${HERE}/usr/bin/bCNC-QT" "$@"
           APPRUN
+          sed -i 's/^          //' AppDir/AppRun
           chmod +x AppDir/AppRun
 
       - name: Download and extract appimagetool
