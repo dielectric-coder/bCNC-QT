@@ -10,12 +10,14 @@ from PySide6.QtCore import Qt, QRectF, QPointF, Signal
 from PySide6.QtGui import (
     QPen, QColor, QBrush, QPainter, QFont,
     QWheelEvent, QMouseEvent, QKeyEvent,
+    QPolygonF, QPainterPath, QImage, QPixmap,
 )
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsLineItem,
     QGraphicsEllipseItem, QGraphicsSimpleTextItem,
+    QGraphicsPathItem, QGraphicsPixmapItem,
     QWidget, QVBoxLayout, QHBoxLayout, QToolBar,
-    QComboBox, QCheckBox, QLabel,
+    QComboBox, QCheckBox, QLabel, QPushButton,
 )
 
 import ViewTransform
@@ -334,7 +336,6 @@ class CNCScene(QGraphicsScene):
             # Side/ISO view: triangle + oval
             gx = r
             gh = 3 * r
-            from PySide6.QtGui import QPolygonF
             triangle = QPolygonF([
                 QPointF(cx - gx, cy - gh),
                 QPointF(cx, cy),
@@ -385,6 +386,7 @@ class CNCScene(QGraphicsScene):
 
                 if block.enable:
                     if cnc.gcode == 0 and self.draw_rapid:
+                        xyz = list(xyz)
                         xyz[0] = last
                     last = xyz[-1]
                 else:
@@ -538,9 +540,6 @@ class CNCScene(QGraphicsScene):
         if probe.isEmpty():
             return
 
-        from PySide6.QtGui import QImage, QPixmap
-        from PySide6.QtWidgets import QGraphicsPixmapItem
-
         # Find Z range for color mapping
         zmin = float("inf")
         zmax = float("-inf")
@@ -607,9 +606,6 @@ class CNCScene(QGraphicsScene):
 
     def _add_polyline_item(self, coords, pen):
         """Add a polyline as connected line segments to the scene."""
-        from PySide6.QtGui import QPainterPath
-        from PySide6.QtWidgets import QGraphicsPathItem
-
         path = QPainterPath()
         path.moveTo(coords[0][0], coords[0][1])
         for x, y in coords[1:]:
@@ -643,6 +639,13 @@ class CanvasPanel(QWidget):
         self.view_combo.addItems(ViewTransform.VIEWS)
         self.view_combo.currentIndexChanged.connect(self._on_view_changed)
         toolbar.addWidget(self.view_combo)
+
+        toolbar.addSeparator()
+
+        fit_btn = QPushButton("Fit")
+        fit_btn.setToolTip("Zoom to fit content")
+        fit_btn.clicked.connect(lambda: self.view.fit_to_content())
+        toolbar.addWidget(fit_btn)
 
         toolbar.addSeparator()
 
@@ -695,8 +698,8 @@ class CanvasPanel(QWidget):
 
     def rebuild(self, gcode, cnc):
         """Full redraw."""
+        self.camera_overlay.reset_items()
         self.scene.rebuild(gcode, cnc)
-        self.view.fit_to_content()
 
     def update_gantry(self, wx, wy, wz, mx, my, mz):
         """Update gantry position marker."""

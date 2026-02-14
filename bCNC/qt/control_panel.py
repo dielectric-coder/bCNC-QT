@@ -506,7 +506,7 @@ class MacroButtonsWidget(QWidget):
         for line in cmd.splitlines():
             line = line.strip()
             if line:
-                self.sender.pendant.put(line)
+                self.sender.executeCommand(line)
 
     def _edit(self, index):
         dlg = MacroEditDialog(index, self)

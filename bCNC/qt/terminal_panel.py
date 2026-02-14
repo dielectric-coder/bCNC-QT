@@ -3,7 +3,7 @@
 # Replaces the Tkinter TerminalPage with a QWidget containing
 # a log view (QListWidget) and command entry (QLineEdit).
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
@@ -45,6 +45,7 @@ class TerminalPanel(QWidget):
         self._cmd_input = QLineEdit()
         self._cmd_input.setPlaceholderText(
             "G-code or macro (RESET, HOME, RUN, ...)")
+        self._cmd_input.installEventFilter(self)
         self._cmd_input.returnPressed.connect(self._on_command)
         self._send_btn = QPushButton("Send")
         self._send_btn.clicked.connect(self._on_command)
@@ -157,16 +158,16 @@ class TerminalPanel(QWidget):
             item.setForeground(QColor("red"))
             self._log.addItem(item)
 
-    def keyPressEvent(self, event):
-        """Handle Up/Down arrow for command history."""
-        if self._cmd_input.hasFocus():
+    def eventFilter(self, obj, event):
+        """Intercept Up/Down on the command input for history navigation."""
+        if obj is self._cmd_input and event.type() == QEvent.Type.KeyPress:
             if event.key() == Qt.Key.Key_Up:
                 self._history_up()
-                return
+                return True
             elif event.key() == Qt.Key.Key_Down:
                 self._history_down()
-                return
-        super().keyPressEvent(event)
+                return True
+        return super().eventFilter(obj, event)
 
     def _history_up(self):
         if not self._history:

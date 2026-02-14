@@ -17,13 +17,15 @@ class _BatchContext:
         self._state = state
 
     def __enter__(self):
-        self._state._batch_depth += 1
+        with self._state._lock:
+            self._state._batch_depth += 1
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._state._batch_depth -= 1
-        if self._state._batch_depth == 0:
-            with self._state._lock:
+        with self._state._lock:
+            self._state._batch_depth -= 1
+            should_flush = self._state._batch_depth == 0
+            if should_flush:
                 changes = dict(self._state._batch_changes)
                 self._state._batch_changes.clear()
                 all_notifications = []
@@ -33,6 +35,8 @@ class _BatchContext:
                     observers += list(
                         self._state._observers.get("*", []))
                     all_notifications.append((key, value, observers))
+            else:
+                all_notifications = []
 
             for key, value, observers in all_notifications:
                 self._state._notify(key, value, None, observers)

@@ -41,7 +41,7 @@ bCNC/
   # Phase 2 — Canvas math (toolkit-independent)
   ViewTransform.py         # 3D→2D projection, coordinate transforms
   PathGeometry.py          # Grid, margin, axis geometry generation
-  SceneGraph.py            # Drawing primitives, scene layers
+  SceneGraph.py            # Drawing primitives, scene layers (Qt-only)
 
   # Phase 3 — Qt UI
   qt/

@@ -24,6 +24,9 @@ def generate_grid_lines(axis_xmin, axis_xmax, axis_ymin, axis_ymax,
     Returns:
         List of line segments, each as [(x1,y1,z), (x2,y2,z)].
     """
+    if spacing <= 0:
+        return []
+
     lines = []
     xmin = (axis_xmin // spacing) * spacing
     xmax = (axis_xmax // spacing + 1) * spacing

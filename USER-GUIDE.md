@@ -93,7 +93,7 @@ Each button can run multi-line G-code commands with variable substitution (`[saf
 - **Click** a button to execute its command (empty buttons open the edit dialog)
 - **Right-click** any button to edit its name, tooltip, and command
 - Buttons are stored in the `[Buttons]` config section, shared with the Tkinter UI
-- Commands are queued through the pendant system and support all Sender features
+- Commands are executed directly and support all Sender features
   (G-code, SENDHEX, `%wait`, variable substitution)
 
 ## Canvas (Center)
@@ -102,7 +102,9 @@ Each button can run multi-line G-code commands with variable substitution (`[saf
 - **Middle-click drag** — pan
 - **Click on path** — select block (highlights in editor)
 - **Ctrl+click** — add to selection
+- **Fit** button in toolbar — zoom to fit all geometry
 - **Ctrl+0** or View > Fit to Content — fit all geometry
+- Auto-fits to content when a file is loaded or imported
 
 The canvas shows:
 - Toolpaths colored by block (rapid=red, feed=blue/green)
@@ -114,7 +116,7 @@ The canvas shows:
 A tree view of G-code blocks and their lines.
 
 ### Expand / Collapse
-- Click a block row to toggle its lines visible or hidden
+- Double-click a block row to toggle its lines visible or hidden
 - The tree arrow and the Expand toolbar button also work
 - Block expand state is preserved across edits
 

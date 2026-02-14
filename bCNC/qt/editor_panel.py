@@ -75,8 +75,8 @@ class EditorPanel(QWidget):
         self._tree.selectionModel().selectionChanged.connect(
             self._on_selection_changed)
 
-        # Click on a block row toggles expand/collapse
-        self._tree.clicked.connect(self._on_clicked)
+        # Double-click on a block row toggles expand/collapse
+        self._tree.doubleClicked.connect(self._on_clicked)
         # Sync block.expand when user uses the tree arrow directly
         self._tree.expanded.connect(self._on_tree_expanded)
         self._tree.collapsed.connect(self._on_tree_collapsed)
@@ -326,7 +326,7 @@ class EditorPanel(QWidget):
 
     def delete_block(self):
         """Delete selected blocks and lines."""
-        sel = self.get_selection()
+        sel = self.get_clean_selection()
         if not sel:
             return
         undoinfo = []

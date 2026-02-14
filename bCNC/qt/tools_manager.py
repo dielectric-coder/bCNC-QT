@@ -98,7 +98,7 @@ class ToolsManager(QObject):
                 package = __import__(name, globals(), locals(), [], 0)
                 tool = package.Tool(self)
                 self.addTool(tool)
-            except (ImportError, AttributeError):
+            except Exception:
                 typ, val, tb = sys.exc_info()
                 traceback.print_exception(typ, val, tb)
 

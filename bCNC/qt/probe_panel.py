@@ -124,8 +124,8 @@ class ProbeCommonWidget(QWidget):
         Utils.setFloat("Probe", "fastfeed", self.fast_probe_feed.value())
         Utils.setFloat("Probe", "feed", self.probe_feed.value())
         Utils.setFloat("Probe", "tlo", self.tlo.value())
-        Utils.setFloat("Probe", "cmd",
-                        self.probe_cmd.currentText().split()[0])
+        Utils.setStr("Probe", "cmd",
+                     self.probe_cmd.currentText().split()[0])
 
 
 # ======================================================================

@@ -7,7 +7,7 @@ import os
 import gettext
 import sys
 
-gettext.install(True, localedir=None)
+gettext.install("bCNC", localedir=None)
 
 __all__ = (
     "to_zip",

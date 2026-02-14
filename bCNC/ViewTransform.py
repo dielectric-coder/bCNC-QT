@@ -92,6 +92,9 @@ def unproject_2d_to_3d(cx, cy, view, zoom):
     Returns:
         Tuple (x, y, z) in world space.
     """
+    if zoom == 0:
+        zoom = 0.001
+
     if view == VIEW_XY:
         x = cx / zoom
         y = -cy / zoom

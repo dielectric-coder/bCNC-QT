@@ -180,27 +180,23 @@ class Probe:
                 if line:
                     return map(float, line.split())
 
-        f = open(self.filename)
-        self.xmin, self.xmax, self.xn = read(f)
-        self.ymin, self.ymax, self.yn = read(f)
-        self.zmin, self.zmax, feed = read(f)
-        CNC.vars["prbfeed"] = feed
+        with open(self.filename) as f:
+            self.xmin, self.xmax, self.xn = read(f)
+            self.ymin, self.ymax, self.yn = read(f)
+            self.zmin, self.zmax, feed = read(f)
+            CNC.vars["prbfeed"] = feed
 
-        self.xn = max(2, int(self.xn))
-        self.yn = max(2, int(self.yn))
+            self.xn = max(2, int(self.xn))
+            self.yn = max(2, int(self.yn))
 
-        self.makeMatrix()
-        self.xstep()
-        self.ystep()
+            self.makeMatrix()
+            self.xstep()
+            self.ystep()
 
-        self.start = True
-        try:
+            self.start = True
             for j in range(self.yn):
                 for i in range(self.xn):
                     self.add(*read(f))
-        except Exception:
-            raise
-        f.close()
 
     # ----------------------------------------------------------------------
     # Save level information to file
@@ -212,20 +208,19 @@ class Probe:
         fn, ext = os.path.splitext(filename)
         ext = ext.lower()
 
-        f = open(filename, "w")
-        if ext != ".xyz":
-            self.filename = filename
-            f.write(f"{self.xmin:g} {self.xmax:g} {int(self.xn)}\n")
-            f.write(f"{self.ymin:g} {self.ymax:g} {int(self.yn)}\n")
-            f.write(f"{self.zmin:g} {self.zmax:g} {CNC.vars['prbfeed']:g}\n")
-            f.write("\n\n")
-        for j in range(self.yn):
-            y = self.ymin + self._ystep * j
-            for i in range(self.xn):
-                x = self.xmin + self._xstep * i
-                f.write(f"{x:g} {y:g} {self.matrix[j][i]:g}\n")
-            f.write("\n")
-        f.close()
+        with open(filename, "w") as f:
+            if ext != ".xyz":
+                self.filename = filename
+                f.write(f"{self.xmin:g} {self.xmax:g} {int(self.xn)}\n")
+                f.write(f"{self.ymin:g} {self.ymax:g} {int(self.yn)}\n")
+                f.write(f"{self.zmin:g} {self.zmax:g} {CNC.vars['prbfeed']:g}\n")
+                f.write("\n\n")
+            for j in range(self.yn):
+                y = self.ymin + self._ystep * j
+                for i in range(self.xn):
+                    x = self.xmin + self._xstep * i
+                    f.write(f"{x:g} {y:g} {self.matrix[j][i]:g}\n")
+                f.write("\n")
         self.saved = True
 
     # ----------------------------------------------------------------------
@@ -312,11 +307,11 @@ class Probe:
         if not self.start:
             return
         i = round((x - self.xmin) / self._xstep)
-        if i < 0.0 or i > self.xn:
+        if i < 0 or i >= self.xn:
             return
 
         j = round((y - self.ymin) / self._ystep)
-        if j < 0.0 or j > self.yn:
+        if j < 0 or j >= self.yn:
             return
 
         rem = abs(x - (i * self._xstep + self.xmin))
@@ -1038,7 +1033,7 @@ class CNC:
         # format string unless rounded
         # I guess it's vital idea to round them rather than truncate anyway!
         v = round(v, d)
-        return (f"{c}{v:>{d}f}").rstrip("0").rstrip(".")
+        return (f"{c}{v:.{d}f}").rstrip("0").rstrip(".")
 
     # ----------------------------------------------------------------------
     @staticmethod
@@ -1440,7 +1435,7 @@ class CNC:
                         self.arcabsolute = False
 
                 elif gcode in (93, 94, 95):
-                    CNC.vars["feedmode"] = gcode
+                    CNC.vars["feedmode"] = f"G{gcode}"
 
                 elif gcode == 98:
                     self.retractz = True
@@ -1750,10 +1745,10 @@ class CNC:
             self.totalTime += length / self.feed
         else:
             try:
-                if CNC.vars["feedmode"] == 94:
+                if CNC.vars["feedmode"] == "G94":
                     # Normal mode
                     t = length / self.feed
-                elif CNC.vars["feedmode"] == 93:
+                elif CNC.vars["feedmode"] == "G93":
                     # Inverse mode
                     t = length * self.feed
                 block.time += t
@@ -2391,7 +2386,7 @@ class GCode:
             pat = BLOCKPAT.match(line)
             if pat:
                 value = pat.group(2).strip()
-                items = map(float, value.split())
+                items = list(map(float, value.split()))
                 tablock = Block(f"legacy [tab,island,minz:{items[4]:f}]")
                 tablock.color = "orange"
                 tablock.extend(self.createTab(*items))
@@ -2710,8 +2705,8 @@ class GCode:
             return f"\t{type_} {px * scale} {py * scale}\n"
 
         def svgArc(scale, gcode, r, ax, ay, bx, by, cx, cy):
-            sphi = math.atan2(ay - yc, ax - xc)
-            ephi = math.atan2(by - yc, bx - xc)
+            sphi = math.atan2(ay - cy, ax - cx)
+            ephi = math.atan2(by - cy, bx - cx)
             arcSweep = ephi - sphi
             arcSweep = 0 if arcSweep <= math.radians(180) else 1
             # Arc
@@ -3248,9 +3243,9 @@ class GCode:
         return undoinfo
 
     # ----------------------------------------------------------------------
-    def setAllBlocksUndo(self, blocks=[]):
+    def setAllBlocksUndo(self, blocks=None):
         undoinfo = [self.setAllBlocksUndo, self.blocks]
-        self.blocks = blocks
+        self.blocks = blocks if blocks is not None else []
         return undoinfo
 
     # ----------------------------------------------------------------------

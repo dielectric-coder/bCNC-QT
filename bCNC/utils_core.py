@@ -135,9 +135,6 @@ LANGUAGES = {
 icons = {}
 images = {}
 config = configparser.ConfigParser(interpolation=None)
-print(
-    "new-config", __prg__, config
-)  # This is here to debug the fact that config is sometimes instantiated twice
 language = ""
 
 _errorReport = True
@@ -185,7 +182,7 @@ def loadConfiguration(systemOnly=False):
             # replace language
             lang = gettext.translation(
                 __prg__,
-                os.path.join(prgpath, "locales"),
+                os.path.join(prgpath, "locale"),
                 languages=[language]
             )
             lang.install()
@@ -197,9 +194,8 @@ def loadConfiguration(systemOnly=False):
 def saveConfiguration():
     global config
     cleanConfiguration()
-    f = open(iniUser, "w")
-    config.write(f)
-    f.close()
+    with open(iniUser, "w") as f:
+        config.write(f)
     delIcons()
 
 

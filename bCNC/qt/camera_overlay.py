@@ -201,6 +201,14 @@ class CameraOverlay:
         self._outer_circle.setZValue(6)
         self._scene.addItem(self._outer_circle)
 
+    def reset_items(self):
+        """Null out item references (call after scene.clear())."""
+        self._pixmap_item = None
+        self._hori_line = None
+        self._vert_line = None
+        self._inner_circle = None
+        self._outer_circle = None
+
     def _remove_items(self):
         """Remove all camera items from the scene."""
         for attr in ('_pixmap_item', '_hori_line', '_vert_line',

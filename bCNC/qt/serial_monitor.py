@@ -154,8 +154,8 @@ class SerialMonitor:
             self.sender._probeUpdate = False
 
     def _update_generic(self):
-        if self.sender._update:
-            update_name = self.sender._update
+        update_name = self.sender._update
+        if update_name:
             self.sender._update = None
             self.signals.generic_update.emit(update_name)
 

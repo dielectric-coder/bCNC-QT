@@ -7,6 +7,7 @@
 import glob
 import os
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -178,20 +179,18 @@ class Sender:
     # ----------------------------------------------------------------------
     def loadHistory(self):
         try:
-            f = open(Utils.hisFile)
+            with open(Utils.hisFile) as f:
+                self.history = [x.strip() for x in f]
         except Exception:
             return
-        self.history = [x.strip() for x in f]
-        f.close()
 
     # ----------------------------------------------------------------------
     def saveHistory(self):
         try:
-            f = open(Utils.hisFile, "w")
+            with open(Utils.hisFile, "w") as f:
+                f.write("\n".join(self.history))
         except Exception:
             return
-        f.write("\n".join(self.history))
-        f.close()
 
     # ----------------------------------------------------------------------
     # Evaluate a line for possible expressions
@@ -208,7 +207,7 @@ class Sender:
     def executeGcode(self, line):
         if (
             isinstance(line, tuple)
-            or line[0] in ("$", "!", "~", "?", "(", "@", "{")
+            or (line and line[0] in ("$", "!", "~", "?", "(", "@", "{"))
             or GPAT.match(line)
         ):
             self.sendGCode(line)
@@ -223,6 +222,8 @@ class Sender:
             return
 
         oline = line.strip()
+        if not oline:
+            return
         line = oline.replace(",", " ").split()
         cmd = line[0].upper()
 
@@ -529,7 +530,8 @@ class Sender:
         self.mcontrol.initController()
         self._gcount = 0
         self._alarm = True
-        self.thread = threading.Thread(target=self.serialIO)
+        self._stop_event = threading.Event()
+        self.thread = threading.Thread(target=self.serialIO, daemon=True)
         self.thread.start()
         return True
 
@@ -544,8 +546,11 @@ class Sender:
         except Exception:
             pass
         self._runLines = 0
+        self._stop_event.set()
+        t = self.thread
         self.thread = None
-        time.sleep(1)
+        if t is not None:
+            t.join(timeout=2)
         try:
             self.serial.close()
         except Exception:
@@ -718,7 +723,8 @@ class Sender:
             self.log.put((Sender.MSG_RUNEND, str(CNC.vars["msg"])))
             if self._onStop:
                 try:
-                    os.system(self._onStop)
+                    subprocess.run(self._onStop, shell=False,
+                                   check=False, timeout=10)
                 except Exception:
                     pass
         self._runLines = 0
@@ -755,13 +761,13 @@ class Sender:
     def controllerStateChange(self, state):
         print(
             f"Controller state changed to: {state} (Running: {self.running})")
-        if state in ("Idle"):
+        if state == "Idle":
             self.mcontrol.viewParameters()
             self.mcontrol.viewState()
 
         if (self.cleanAfter is True
                 and self.running is False
-                and state in ("Idle")):
+                and state == "Idle"):
             self.cleanAfter = False
             self.jobDone()
 
@@ -777,7 +783,7 @@ class Sender:
         tosend = None  # next string to send
         tr = tg = time.time()  # last time a ? or $G was send to grbl
 
-        while self.thread:
+        while self.thread and not self._stop_event.is_set():
             t = time.time()
             # refresh machine position?
             if t - tr > SERIAL_POLL:
@@ -831,7 +837,7 @@ class Sender:
                             self._gcount += 1
                             tosend = None
                 except Empty:
-                    break
+                    pass
 
                 if tosend is not None:
                     # All modification in tosend should be

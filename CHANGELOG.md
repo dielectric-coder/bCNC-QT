@@ -2,6 +2,57 @@
 
 There are too much commits, so i've created this brief overview of new features in bCNC.
 
+## Bug Fixes & Stability (post-initial commit)
+
+Comprehensive code review and fixes across 19 files (38 individual fixes).
+
+- **Sender.py**: Fixed serial thread crash on empty queue (break→pass), added
+  daemon thread + `threading.Event` for clean shutdown, `thread.join(timeout=2)`
+  replaces `time.sleep(1)`, `os.system`→`subprocess.run` (no shell injection),
+  `in ("Idle")`→`== "Idle"`, file handle leaks in loadHistory/saveHistory,
+  empty-string guards in executeGcode/executeCommand, added missing
+  `import subprocess`
+- **main_window.py**: Thread-safe UI callbacks routed through Qt signals instead
+  of direct widget mutation from background threads, blocking HTTP update check
+  moved to QThread, auto-zoom on file load (including DXF/SVG import)
+- **CNC.py**: `fmt()` precision format fix (`>{d}f`→`.{d}f`), feedmode stores
+  `"G94"`/`"G93"` strings instead of bare ints, Probe.add() off-by-one
+  (`i > xn`→`i >= xn`), Python 3 `list(map(...))`, mutable default arg
+  `blocks=[]`→`blocks=None`, svgArc closure variable fix (`yc/xc`→`cy/cx`),
+  Probe.load()/save() file handle leaks fixed with `with` statements
+- **terminal_panel.py**: Command history Up/Down now works — event filter on
+  QLineEdit instead of unreachable keyPressEvent on parent widget
+- **camera_overlay.py**: `reset_items()` prevents dangling C++ pointers after
+  scene.clear()
+- **canvas_widget.py**: Moved 3 inline imports (QPolygonF, QPainterPath,
+  QGraphicsPathItem, QImage, QPixmap) to top-level for performance, auto-fit
+  only on file load (not every redraw), copy xyz before mutation in rapid draw,
+  added "Fit" button to canvas toolbar
+- **editor_panel.py**: `delete_block()` uses `get_clean_selection()` to prevent
+  index corruption when blocks and their lines are both selected, block
+  expand/collapse changed from single-click to double-click to avoid interfering
+  with selection
+- **probe_panel.py**: `setFloat`→`setStr` for probe command string
+- **MachineState.py**: Lock around `_batch_depth` increment/decrement
+- **EventBus.py**: try/except around each callback in `emit()` so one failure
+  doesn't kill remaining subscribers
+- **utils_core.py**: Config save uses `with` statement, removed debug
+  `print("new-config", ...)`, fixed locale directory typo (`"locales"`→`"locale"`)
+- **tools_manager.py**: Plugin loading catches `Exception` instead of only
+  `(ImportError, AttributeError)`
+- **control_panel.py**: Macro buttons execute via `executeCommand()` directly
+  instead of indirect pendant queue
+- **Helpers.py**: `gettext.install(True, ...)`→`gettext.install("bCNC", ...)`
+  (correct domain name instead of boolean)
+- **ViewTransform.py**: Guard against division by zero when zoom==0
+- **PathGeometry.py**: Guard against spacing<=0 infinite loop in grid generation
+- **SceneGraph.py**: Removed dead TkCanvasRenderer class (108 lines of
+  Tkinter-only code)
+- **serial_monitor.py**: Snapshot `_update` flag before checking to avoid
+  TOCTOU race
+- **signals.py**: Added `ui_disable`, `ui_enable`, `ui_show_info` signals for
+  thread-safe Sender→UI communication
+
 ## Qt Migration (in progress)
 
 Backend decoupling and experimental Qt (PySide6) interface.
@@ -68,15 +119,14 @@ Backend decoupling and experimental Qt (PySide6) interface.
     About dialog
   - User-configurable macro buttons: 3-column grid of custom buttons loaded from
     `[Buttons]` config (shared with Tkinter), click to execute multi-line G-code,
-    right-click to edit name/tooltip/command, uses pendant queue for execution
+    right-click to edit name/tooltip/command
   - Pendant controls: Start/Stop Pendant in Machine menu with status messages
   - Canvas rendering fixes: correct draw order (paths first, then grid/workarea),
     fit-to-content zooms to toolpaths instead of the full workarea, cosmetic pens
     for consistent line widths at any zoom level
   - Command-line file loading: `python -m bCNC.qt.app <file.gcode>`
-  - Editor click-to-toggle: clicking a block row expands/collapses its lines
-    directly, no separate Expand button needed; tree arrows also sync with
-    block.expand state
+  - Editor expand/collapse: double-clicking a block row expands/collapses its
+    lines; tree arrows also sync with block.expand state
   - Two-column layout: all panels (Control, Editor, Probe, Tools, Terminal)
     tabbed in a single left sidebar with tabs on top; canvas fills the
     central area

@@ -84,3 +84,8 @@ class AppSignals(QObject):
     # Status bar
     status_message = Signal(str)           # <<Status>>
     canvas_coords = Signal(float, float, float)  # <<Coords>>
+
+    # UI callbacks from Sender (thread-safe wrappers)
+    ui_disable = Signal()                  # disable widgets during run
+    ui_enable = Signal()                   # re-enable widgets after run
+    ui_show_info = Signal(str, str)        # (title, message) info dialog

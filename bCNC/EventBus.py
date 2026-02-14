@@ -56,7 +56,10 @@ class EventBus:
         with self._lock:
             callbacks = list(self._subscribers[event_name])
         for callback in callbacks:
-            callback(*args, **kwargs)
+            try:
+                callback(*args, **kwargs)
+            except Exception:
+                pass
 
     def clear(self, event_name=None):
         """Remove all subscribers, optionally for a specific event."""

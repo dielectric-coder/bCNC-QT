@@ -9,7 +9,7 @@ import socket
 import sys
 import webbrowser
 
-from PySide6.QtCore import Qt, QByteArray, QTimer
+from PySide6.QtCore import Qt, QByteArray, QTimer, QThread, Signal, QObject
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QDockWidget, QStatusBar, QTabWidget,
@@ -63,12 +63,15 @@ class MainWindow(QMainWindow):
         self.resize(1200, 800)
         self.setContentsMargins(4, 0, 4, 0)
 
-        # Wire Sender UI callbacks
+        # Wire Sender UI callbacks — all route through signals for thread safety
         sender._ui_set_status = lambda msg: self.signals.status_message.emit(msg)
-        sender._ui_disable = lambda: self._set_widgets_enabled(False)
-        sender._ui_enable = lambda: self._set_widgets_enabled(True)
-        sender._ui_show_info = lambda title, msg: QMessageBox.information(
-            self, title, msg)
+        sender._ui_disable = lambda: self.signals.ui_disable.emit()
+        sender._ui_enable = lambda: self.signals.ui_enable.emit()
+        sender._ui_show_info = lambda title, msg: self.signals.ui_show_info.emit(title, msg)
+        self.signals.ui_disable.connect(lambda: self._set_widgets_enabled(False))
+        self.signals.ui_enable.connect(lambda: self._set_widgets_enabled(True))
+        self.signals.ui_show_info.connect(
+            lambda title, msg: QMessageBox.information(self, title, msg))
 
         # --- Dock tabs on top ---
         self.setTabPosition(
@@ -185,6 +188,7 @@ class MainWindow(QMainWindow):
 
         # Editor signals
         self.signals.file_loaded.connect(self.editor_panel.fill)
+        self.signals.file_loaded.connect(self._on_file_loaded)
 
         # Selection sync: editor → canvas, canvas → editor
         self.signals.selection_changed.connect(
@@ -526,6 +530,7 @@ class MainWindow(QMainWindow):
         self.sender.gcode.addUndo(undoinfo)
         self.editor_panel.fill()
         self._on_draw()
+        self.canvas_panel.view.fit_to_content()
 
     def _on_reload(self):
         if not self.sender.gcode.filename:
@@ -665,6 +670,11 @@ class MainWindow(QMainWindow):
         else:
             self.editor_panel.select_blocks([bid])
 
+    def _on_file_loaded(self, filename):
+        """After a file is loaded, rebuild and fit to content."""
+        self._on_draw()
+        self.canvas_panel.view.fit_to_content()
+
     def _on_draw(self):
         """Rebuild the canvas from current gcode."""
         self.canvas_panel.rebuild(self.sender.gcode, self.sender.cnc)
@@ -718,43 +728,52 @@ class MainWindow(QMainWindow):
     # Help menu
     # ------------------------------------------------------------------
     def _on_check_updates(self):
-        """Check PyPI for newer bCNC version."""
+        """Check PyPI for newer bCNC version (non-blocking)."""
         import json
         import http.client as http_client
 
-        try:
-            h = http_client.HTTPSConnection("pypi.org", timeout=10)
-            h.request("GET", "/pypi/bCNC/json", None,
-                      {"User-Agent": "bCNC"})
-            r = h.getresponse()
-            if r.status == 200:
-                data = json.loads(r.read().decode("utf-8"))
-                latest = data["info"]["version"]
-                current = Utils.__version__
+        class _UpdateWorker(QThread):
+            finished = Signal(str, str)  # (latest_version, error_msg)
 
-                if self._is_newer(current, latest):
-                    ans = QMessageBox.question(
-                        self, _("Update Available"),
-                        _("A newer version is available:") + f"\n\n"
-                        f"Installed: {current}\n"
-                        f"Available: {latest}\n\n"
-                        + _("Open download page?"),
-                        QMessageBox.StandardButton.Yes
-                        | QMessageBox.StandardButton.No)
-                    if ans == QMessageBox.StandardButton.Yes:
-                        webbrowser.open("https://pypi.org/project/bCNC/")
-                else:
-                    QMessageBox.information(
-                        self, _("Up to Date"),
-                        _("You are running the latest version.")
-                        + f"\n\nVersion: {current}")
-            else:
+            def run(self):
+                try:
+                    h = http_client.HTTPSConnection("pypi.org", timeout=10)
+                    h.request("GET", "/pypi/bCNC/json", None,
+                              {"User-Agent": "bCNC"})
+                    r = h.getresponse()
+                    if r.status == 200:
+                        data = json.loads(r.read().decode("utf-8"))
+                        self.finished.emit(data["info"]["version"], "")
+                    else:
+                        self.finished.emit(
+                            "", _("Error {} in connection").format(r.status))
+                except Exception as e:
+                    self.finished.emit("", str(e))
+
+        def _on_result(latest, error):
+            if error:
                 QMessageBox.warning(
-                    self, _("Update Check Failed"),
-                    _("Error {} in connection").format(r.status))
-        except Exception as e:
-            QMessageBox.warning(
-                self, _("Update Check Failed"), str(e))
+                    self, _("Update Check Failed"), error)
+            elif self._is_newer(Utils.__version__, latest):
+                ans = QMessageBox.question(
+                    self, _("Update Available"),
+                    _("A newer version is available:") + f"\n\n"
+                    f"Installed: {Utils.__version__}\n"
+                    f"Available: {latest}\n\n"
+                    + _("Open download page?"),
+                    QMessageBox.StandardButton.Yes
+                    | QMessageBox.StandardButton.No)
+                if ans == QMessageBox.StandardButton.Yes:
+                    webbrowser.open("https://pypi.org/project/bCNC/")
+            else:
+                QMessageBox.information(
+                    self, _("Up to Date"),
+                    _("You are running the latest version.")
+                    + f"\n\nVersion: {Utils.__version__}")
+
+        self._update_worker = _UpdateWorker()
+        self._update_worker.finished.connect(_on_result)
+        self._update_worker.start()
 
     @staticmethod
     def _is_newer(current, latest):
