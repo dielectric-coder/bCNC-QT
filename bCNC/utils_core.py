@@ -38,6 +38,7 @@ __all__ = [
 
 import gettext
 import glob
+import importlib.metadata
 import os
 import sys
 import traceback
@@ -52,7 +53,10 @@ except Exception:
 
 __author__ = "Vasilis Vlachoudis"
 __email__ = "vvlachoudis@gmail.com"
-__version__ = "0.10.0"
+try:
+    __version__ = importlib.metadata.version("bCNC-QT")
+except importlib.metadata.PackageNotFoundError:
+    __version__ = "0.0.0-dev"  # running from source without pip install
 __date__ = "24 June 2022"
 __prg__ = "bCNC"
 
