@@ -1,0 +1,214 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Lint & basic checks ──────────────────────────────────────────────
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install PySide6 pyserial numpy Pillow svgelements shxparser
+
+      - name: Syntax-check all Qt files
+        run: |
+          for f in bCNC/qt/*.py; do
+            python -c "import py_compile; py_compile.compile('$f', doraise=True)"
+          done
+
+      - name: Import check
+        run: |
+          PYTHONPATH=bCNC:bCNC/lib python -c "
+          import Helpers
+          from bCNC.qt.signals import AppSignals
+          print('Import check OK')
+          "
+
+  # ── Build pip packages (sdist + wheel) ───────────────────────────────
+  build-pip:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pip-packages
+          path: dist/*
+
+  # ── Build PyInstaller binaries (Linux / Windows / macOS) ─────────────
+  build-pyinstaller:
+    needs: lint-and-test
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: bCNC-QT-linux-x86_64
+          - os: windows-latest
+            artifact: bCNC-QT-windows-x86_64
+          - os: macos-13
+            artifact: bCNC-QT-macos-x86_64
+          - os: macos-latest
+            artifact: bCNC-QT-macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install PySide6 pyserial numpy Pillow svgelements shxparser pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller bCNC-QT.spec
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd dist
+          tar czf ../${{ matrix.artifact }}.tar.gz bCNC-QT/
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\bCNC-QT -DestinationPath ${{ matrix.artifact }}.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.artifact }}.tar.gz
+            ${{ matrix.artifact }}.zip
+
+  # ── Build Linux AppImage ─────────────────────────────────────────────
+  build-appimage:
+    needs: build-pyinstaller
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bCNC-QT-linux-x86_64
+
+      - name: Extract PyInstaller build
+        run: tar xzf bCNC-QT-linux-x86_64.tar.gz
+
+      - name: Create AppDir structure
+        run: |
+          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps
+          cp -r bCNC-QT/* AppDir/usr/bin/
+
+          # Desktop entry
+          cat > AppDir/bCNC-QT.desktop << 'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=bCNC-QT
+          Exec=bCNC-QT
+          Icon=bCNC-QT
+          Categories=Science;Engineering;
+          Comment=CNC controller GUI
+          DESKTOP
+
+          # Use an existing icon or create a placeholder
+          if [ -f bCNC-QT/icons/about.gif ]; then
+            cp bCNC-QT/icons/about.gif AppDir/bCNC-QT.png 2>/dev/null || true
+          fi
+          cp AppDir/bCNC-QT.desktop AppDir/usr/share/icons/hicolor/256x256/apps/ 2>/dev/null || true
+
+          # AppRun script
+          cat > AppDir/AppRun << 'APPRUN'
+          #!/bin/bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          exec "${HERE}/usr/bin/bCNC-QT" "$@"
+          APPRUN
+          chmod +x AppDir/AppRun
+
+      - name: Download appimagetool
+        run: |
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+
+      - name: Build AppImage
+        run: |
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir bCNC-QT-x86_64.AppImage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bCNC-QT-AppImage
+          path: bCNC-QT-x86_64.AppImage
+
+  # ── Create GitHub Release ────────────────────────────────────────────
+  create-release:
+    needs: [build-pip, build-pyinstaller, build-appimage]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: List artifacts
+        run: find artifacts/ -type f
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release create "$TAG" \
+            --title "bCNC-QT $TAG" \
+            --generate-notes \
+            artifacts/pip-packages/* \
+            artifacts/bCNC-QT-linux-x86_64/*.tar.gz \
+            artifacts/bCNC-QT-windows-x86_64/*.zip \
+            artifacts/bCNC-QT-macos-x86_64/*.tar.gz \
+            artifacts/bCNC-QT-macos-arm64/*.tar.gz \
+            artifacts/bCNC-QT-AppImage/*.AppImage
+
+  # ── Publish to PyPI (trusted publishing) ─────────────────────────────
+  publish-pypi:
+    needs: create-release
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pip-packages
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

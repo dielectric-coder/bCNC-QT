@@ -11,8 +11,13 @@
 import os
 import sys
 
+# Determine base directory — PyInstaller extracts to sys._MEIPASS
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    _bCNC_dir = sys._MEIPASS
+else:
+    _bCNC_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # Ensure bCNC package is on the path
-_bCNC_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _bCNC_dir not in sys.path:
     sys.path.insert(0, _bCNC_dir)
 # Also add lib/ for tkExtra, rexx, etc.

@@ -52,7 +52,7 @@ except Exception:
 
 __author__ = "Vasilis Vlachoudis"
 __email__ = "vvlachoudis@gmail.com"
-__version__ = "0.9.16"
+__version__ = "0.10.0"
 __date__ = "24 June 2022"
 __prg__ = "bCNC"
 
@@ -66,18 +66,18 @@ __platform_fingerprint__ = "({} py{}.{}.{})".format(
 __title__ = f"{__prg__} {__version__} {__platform_fingerprint__}"
 
 __prg__ = "bCNC"
-prgpath = os.path.abspath(os.path.dirname(__file__))
-if getattr(sys, "frozen", False):
-    # When being bundled by pyinstaller, paths are different
-    print("Running as pyinstaller bundle!", sys.argv[0])
-    prgpath = os.path.abspath(os.path.dirname(sys.argv[0]))
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    # PyInstaller bundle: data files are extracted to sys._MEIPASS
+    prgpath = sys._MEIPASS
+else:
+    prgpath = os.path.abspath(os.path.dirname(__file__))
 iniSystem = os.path.join(prgpath, f"{__prg__}.ini")
 iniUser = os.path.expanduser(f"~/.{__prg__}")
 hisFile = os.path.expanduser(f"~/.{__prg__}.history")
 
 
 _ = gettext.translation(
-    "bCNC", os.path.join(prgpath, "locale"), fallback=True
+    "bCNC", os.path.join(prgpath, "locales"), fallback=True
 ).gettext
 
 
@@ -182,7 +182,7 @@ def loadConfiguration(systemOnly=False):
             # replace language
             lang = gettext.translation(
                 __prg__,
-                os.path.join(prgpath, "locale"),
+                os.path.join(prgpath, "locales"),
                 languages=[language]
             )
             lang.install()

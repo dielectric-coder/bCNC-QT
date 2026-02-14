@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bCNC-QT"
+version = "0.10.0"
+description = "Qt-based CNC controller GUI — fork of bCNC with PySide6"
+readme = "README.md"
+license = "GPL-2.0-only"
+requires-python = ">=3.8"
+authors = [
+    { name = "Vasilis Vlachoudis", email = "vvlachoudis@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Terminals :: Serial",
+]
+dependencies = [
+    "PySide6>=6.5",
+    "pyserial>=3",
+    "numpy>=1.20",
+    "Pillow>=9",
+    "svgelements>=1,<2",
+    "shxparser>=0.0.2",
+]
+
+[project.optional-dependencies]
+camera = ["opencv-python>=4.5"]
+
+[project.urls]
+Homepage = "https://github.com/vlachoudis/bCNC"
+Repository = "https://github.com/vlachoudis/bCNC"
+
+[project.scripts]
+bCNC-qt = "bCNC.qt.app:main"
+
+[tool.setuptools.packages.find]
+include = ["bCNC*"]
+
+[tool.setuptools.package-data]
+bCNC = [
+    "bCNC.ini",
+    "icons/*.gif",
+    "icons/*.png",
+    "images/*.gif",
+    "images/*.png",
+    "locales/*/LC_MESSAGES/*.mo",
+    "locales/*/LC_MESSAGES/*.po",
+    "locales/*.pot",
+    "pendant/*",
+]

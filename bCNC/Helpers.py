@@ -7,18 +7,22 @@ import os
 import gettext
 import sys
 
-gettext.install("bCNC", localedir=None)
+_localedir = os.path.join(
+    sys._MEIPASS if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+    else os.path.abspath(os.path.dirname(__file__)),
+    "locales",
+)
+gettext.install("bCNC", localedir=_localedir if os.path.isdir(_localedir) else None)
 
 __all__ = (
     "to_zip",
 )
 
 __prg__ = "bCNC"
-prgpath = os.path.abspath(os.path.dirname(__file__))
-if getattr(sys, "frozen", False):
-    # When being bundled by pyinstaller, paths are different
-    print("Running as pyinstaller bundle!", sys.argv[0])
-    prgpath = os.path.abspath(os.path.dirname(sys.argv[0]))
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    prgpath = sys._MEIPASS
+else:
+    prgpath = os.path.abspath(os.path.dirname(__file__))
 
 
 def to_zip(*args, **kwargs):

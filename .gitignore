@@ -4,10 +4,13 @@ __pycache__/
 lib/*.pyc
 lib/*.pyo
 .idea
-bCNC.egg-info
-.eggs
-dist
-build
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# PyInstaller
+*.spec.bak
 
 *.code-workspace
 .vscode/

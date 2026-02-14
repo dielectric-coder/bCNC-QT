@@ -1,0 +1,8 @@
+include *.md
+include LICENSE.*
+include bCNC/bCNC.ini
+
+recursive-include bCNC/icons *.gif *.png
+recursive-include bCNC/images *.gif *.png
+recursive-include bCNC/locales *.mo *.po *.pot
+recursive-include bCNC/pendant *
